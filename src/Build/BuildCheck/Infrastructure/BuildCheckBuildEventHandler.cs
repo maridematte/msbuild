@@ -21,7 +21,7 @@ internal class BuildCheckBuildEventHandler
 
     private readonly Dictionary<Type, Action<BuildEventArgs>> _eventHandlers;
 
-    private IDictionary<int, bool> _projectRestore;
+    private bool isRestoring = false;
 
     internal BuildCheckBuildEventHandler(
         ICheckContextFactory checkContextFactory,
@@ -30,7 +30,6 @@ internal class BuildCheckBuildEventHandler
         _buildCheckManager = buildCheckManager;
         _checkContextFactory = checkContextFactory;
 
-        _projectRestore = new Dictionary<int, bool>();
         _eventHandlers = new()
         {
             { typeof(BuildSubmissionStartedEventArgs), (BuildEventArgs e) => HandleBuildSubmissionStartedEvent((BuildSubmissionStartedEventArgs)e) },
@@ -51,10 +50,9 @@ internal class BuildCheckBuildEventHandler
     public void HandleBuildEvent(BuildEventArgs e)
     {
         if (
+            isRestoring &&
             e.GetType() != typeof(BuildSubmissionStartedEventArgs) &&
-            e.BuildEventContext is not null &&
-            _projectRestore.TryGetValue(e.BuildEventContext.SubmissionId, out bool isRestoring) &&
-            isRestoring)
+            e.BuildEventContext is not null)
         {
             return;
         }
@@ -67,18 +65,14 @@ internal class BuildCheckBuildEventHandler
 
     private void HandleBuildSubmissionStartedEvent(BuildSubmissionStartedEventArgs eventArgs)
     {
-        if (_projectRestore.TryGetValue(eventArgs.SubmissionId, out bool isRestoring))
+        if (isRestoring)
         {
-            if (isRestoring)
-            {
-                _projectRestore[eventArgs.SubmissionId] = false;
-            }
+            isRestoring = false;
         }
         else
         {
             eventArgs.GlobalProperties.TryGetValue(MSBuildConstants.MSBuildIsRestoring, out string? restoreProperty);
-            bool isRestore = restoreProperty is not null ? Convert.ToBoolean(restoreProperty) : false;
-            _projectRestore.Add(eventArgs.SubmissionId, isRestore);
+            isRestoring = restoreProperty is not null ? Convert.ToBoolean(restoreProperty) : false;
         }
     }
 

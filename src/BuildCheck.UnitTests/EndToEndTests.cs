@@ -269,6 +269,8 @@ public class EndToEndTests : IDisposable
 
         success.ShouldBeTrue();
         output.ShouldNotContain("BC0101");
+        output.ShouldNotContain("BC0102");
+        output.ShouldNotContain("BC0103");
     }
 
     private void AddCustomDataSourceToNugetConfig(string checkCandidatePath)
